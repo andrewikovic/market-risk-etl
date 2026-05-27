@@ -1,0 +1,23 @@
+scenarios:
+  - name: "Equity Selloff"
+    shocks:
+      Equity: -0.10
+      Fixed Income: 0.03
+      Commodity: 0.02
+  - name: "Rate Shock"
+    shocks:
+      Fixed Income: -0.08
+      Equity: -0.03
+      Commodity: 0.00
+  - name: "Oil Shock"
+    shocks:
+      Energy: -0.15
+      Equity: -0.04
+      Fixed Income: 0.01
+  - name: "Risk-Off Crisis"
+    shocks:
+      Equity: -0.15
+      Fixed Income: 0.04
+      Commodity: -0.05
+      Crypto: -0.25
+

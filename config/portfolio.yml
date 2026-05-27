@@ -1,0 +1,30 @@
+portfolio_name: "Sample Multi-Asset Portfolio"
+base_currency: "USD"
+initial_value: 100000
+positions:
+  - ticker: "SPY"
+    asset_class: "Equity"
+    sector: "Broad Market"
+    currency: "USD"
+    quantity: 150
+  - ticker: "AAPL"
+    asset_class: "Equity"
+    sector: "Technology"
+    currency: "USD"
+    quantity: 80
+  - ticker: "MSFT"
+    asset_class: "Equity"
+    sector: "Technology"
+    currency: "USD"
+    quantity: 60
+  - ticker: "GLD"
+    asset_class: "Commodity"
+    sector: "Gold"
+    currency: "USD"
+    quantity: 100
+  - ticker: "TLT"
+    asset_class: "Fixed Income"
+    sector: "Treasury Bonds"
+    currency: "USD"
+    quantity: 120
+
