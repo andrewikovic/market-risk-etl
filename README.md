@@ -44,6 +44,8 @@ market-risk-etl/
   src/load/               SQLAlchemy database utilities and loaders
   src/quality/            Data quality checks
   dashboards/             Streamlit app and dashboard pages
+  Dockerfile              Container image for one-off and scheduled ETL runs
+  docker-compose.yml      PostgreSQL plus optional scheduled ETL service
   tests/                  Pytest coverage for core analytics
 ```
 
@@ -77,6 +79,9 @@ python3 -m venv .venv
 .venv/bin/python -m src.pipeline
 ```
 
+By default, `src.pipeline` writes processed CSV outputs under `data/processed/`. It does not load PostgreSQL unless
+`--load-db` is provided.
+
 Use live Yahoo Finance data before falling back to CSV:
 
 ```bash
@@ -89,16 +94,79 @@ Require live Yahoo Finance data and fail if yfinance cannot return usable prices
 .venv/bin/python -m src.pipeline --require-live
 ```
 
-Initialize PostgreSQL schemas:
+Start PostgreSQL with Docker Compose:
 
-```python
-from src.load.db import get_engine, initialize_database
-
-engine = get_engine()
-initialize_database(engine, "sql")
+```bash
+cp .env.example .env
+docker compose up -d postgres
 ```
 
-The database URL is read from `DATABASE_URL`. Copy `.env.example` to `.env` and update it for your local PostgreSQL instance.
+This is a one-command Postgres container startup, not a complete warehouse load. The SQL files are applied by the
+Python loader, not automatically by the Postgres container.
+
+Initialize the schemas and load raw, staging, and mart tables:
+
+```bash
+.venv/bin/python -m src.pipeline --load-db
+```
+
+The database URL is read from `DATABASE_URL`. Use `--database-url` to override it for a single run. By default,
+`--load-db` initializes the schemas and replaces the project-owned raw, staging, and mart rows so local reruns are
+deterministic.
+
+The current database setup is therefore two commands in practice:
+
+```bash
+docker compose up -d postgres
+.venv/bin/python -m src.pipeline --load-db
+```
+
+Query the loaded warehouse:
+
+```bash
+docker exec -it market-risk-postgres psql -U risk_user -d market_risk
+```
+
+```sql
+SELECT COUNT(*) FROM raw.prices;
+SELECT * FROM mart.portfolio_values ORDER BY value_date DESC LIMIT 5;
+SELECT * FROM mart.risk_metrics ORDER BY metric_date DESC, metric_name;
+```
+
+### Scheduled ETL Refresh
+
+Run the scheduler locally from the virtual environment:
+
+```bash
+ETL_RUN_ON_START=true \
+ETL_DAILY_AT=06:00 \
+ETL_TIMEZONE=America/Edmonton \
+ETL_LOAD_DB=true \
+ETL_LIVE=true \
+ETL_NO_WRITE=true \
+.venv/bin/python -m src.scheduler
+```
+
+`ETL_DAILY_AT` runs the ETL once per day at `HH:MM` in `ETL_TIMEZONE`. If `ETL_DAILY_AT` is unset, the scheduler
+uses `ETL_INTERVAL_MINUTES` instead. `ETL_RUN_ON_START=true` performs an immediate refresh before waiting for the
+next scheduled time.
+
+Run PostgreSQL and the scheduled ETL service with Docker Compose:
+
+```bash
+cp .env.example .env
+docker compose --profile scheduler up -d --build
+docker compose logs -f etl-scheduler
+```
+
+The Compose scheduler waits for the Postgres health check, loads the warehouse through `src.pipeline --load-db`
+semantics, and by default refreshes daily at 06:00 `America/Edmonton` after an immediate startup run.
+
+For a host cron deployment, call the one-off pipeline command directly from cron:
+
+```cron
+0 6 * * 1-5 cd /path/to/market-risk-etl && .venv/bin/python -m src.pipeline --live --load-db --no-write >> /tmp/market-risk-etl.log 2>&1
+```
 
 ## Risk Metrics
 
@@ -132,6 +200,12 @@ MARKET_DATA_MODE=live .venv/bin/streamlit run dashboards/streamlit_app.py
 ```
 
 Use `MARKET_DATA_MODE=live_with_fallback` if you want the dashboard to try yfinance first and fall back to sample data when a live pull fails.
+
+Use PostgreSQL-backed dashboard data after running `--load-db`:
+
+```bash
+MARKET_DATA_MODE=database .venv/bin/streamlit run dashboards/streamlit_app.py
+```
 
 Pages:
 
@@ -230,8 +304,8 @@ Coverage includes returns, rolling volatility, beta alignment, drawdowns, VaR, E
 
 ## Future Improvements
 
-- Docker Compose with Postgres
-- Scheduled ETL runs
+- One-command full database bootstrap that starts Postgres, waits for health, and runs `src.pipeline --load-db`
+- Scheduled ETL failure notifications and backfill controls
 - Exportable PDF/CSV risk report
 - Factor model
 - Risk contribution by asset

@@ -1,0 +1,40 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: market-risk-postgres
+    environment:
+      POSTGRES_USER: risk_user
+      POSTGRES_PASSWORD: risk_password
+      POSTGRES_DB: market_risk
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U risk_user -d market_risk"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  etl-scheduler:
+    build: .
+    container_name: market-risk-etl-scheduler
+    profiles:
+      - scheduler
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: ${SCHEDULER_DATABASE_URL:-postgresql+psycopg://risk_user:risk_password@postgres:5432/market_risk}
+      ETL_DAILY_AT: ${ETL_DAILY_AT:-06:00}
+      ETL_TIMEZONE: ${ETL_TIMEZONE:-America/Edmonton}
+      ETL_RUN_ON_START: ${ETL_RUN_ON_START:-true}
+      ETL_LOAD_DB: ${ETL_LOAD_DB:-true}
+      ETL_LIVE: ${ETL_LIVE:-true}
+      ETL_NO_WRITE: ${ETL_NO_WRITE:-true}
+      ETL_LOG_LEVEL: ${ETL_LOG_LEVEL:-INFO}
+    command: ["python", "-m", "src.scheduler"]
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
