@@ -8,6 +8,8 @@ import yaml
 
 from src.extract.extract_positions import load_positions_from_config
 from src.extract.extract_prices import ingest_prices, load_assets_config
+from src.load.db import get_engine
+from src.load.pipeline_db import load_pipeline_outputs
 from src.quality.data_quality_checks import run_data_quality_checks
 from src.risk.expected_shortfall import calculate_expected_shortfall
 from src.risk.historical_var import calculate_historical_var
@@ -65,6 +67,7 @@ def run_pipeline(
     }
 
     outputs = {
+        "assets": assets,
         "raw_prices": raw_prices,
         "stg_prices": stg_prices,
         "returns": returns,
@@ -102,6 +105,13 @@ def main() -> None:
         help="Require yfinance data and fail instead of falling back to sample CSV",
     )
     parser.add_argument("--no-write", action="store_true", help="Do not write processed CSV outputs")
+    parser.add_argument("--load-db", action="store_true", help="Load pipeline outputs into PostgreSQL")
+    parser.add_argument("--database-url", help="Override DATABASE_URL for this run")
+    parser.add_argument(
+        "--skip-db-init",
+        action="store_true",
+        help="Skip PostgreSQL schema initialization before loading outputs",
+    )
     args = parser.parse_args()
     outputs = run_pipeline(
         prefer_live=args.live or args.require_live,
@@ -113,6 +123,17 @@ def main() -> None:
     print(f"Price rows: {len(outputs['raw_prices'])}")
     print(f"Return rows: {len(outputs['returns'])}")
     print(f"Portfolio dates: {len(outputs['portfolio_values'])}")
+    if args.load_db:
+        engine = get_engine(args.database_url)
+        counts = load_pipeline_outputs(
+            engine,
+            outputs,
+            sql_dir=PROJECT_ROOT / "sql",
+            initialize=not args.skip_db_init,
+            replace_existing=True,
+        )
+        loaded = ", ".join(f"{name}={count}" for name, count in sorted(counts.items()))
+        print(f"PostgreSQL load completed: {loaded}")
 
 
 if __name__ == "__main__":

@@ -14,14 +14,18 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.pipeline import load_scenarios, run_pipeline  # noqa: E402
+from src.load.db import get_engine  # noqa: E402
+from src.load.read_db import read_pipeline_outputs  # noqa: E402
 
 
 @st.cache_data(show_spinner=False)
 def load_dashboard_data() -> dict:
     """Load analytics for Streamlit pages from sample or live market data."""
     mode = os.getenv("MARKET_DATA_MODE", "sample").strip().lower()
+    if mode in {"database", "db", "postgres", "postgresql"}:
+        return read_pipeline_outputs(get_engine())
     if mode not in {"sample", "live", "live_with_fallback"}:
-        raise ValueError("MARKET_DATA_MODE must be sample, live, or live_with_fallback")
+        raise ValueError("MARKET_DATA_MODE must be sample, live, live_with_fallback, or database")
     return run_pipeline(
         PROJECT_ROOT,
         prefer_live=mode in {"live", "live_with_fallback"},

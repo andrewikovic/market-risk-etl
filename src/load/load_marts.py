@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import pandas as pd
-from sqlalchemy import Engine
+from sqlalchemy import Date, DateTime, Engine
 
 
 def load_staging_prices(engine: Engine, stg_prices_df: pd.DataFrame, if_exists: str = "append") -> None:
@@ -46,6 +46,34 @@ def load_exposures(engine: Engine, exposures_df: pd.DataFrame, if_exists: str = 
     exposures_df.to_sql("exposures", engine, schema="mart", if_exists=if_exists, index=False, method="multi")
 
 
+def load_risk_metrics(engine: Engine, risk_metrics_df: pd.DataFrame, if_exists: str = "append") -> None:
+    """Load portfolio-level risk metric rows into mart.risk_metrics."""
+    columns = [
+        "portfolio_name",
+        "metric_date",
+        "metric_name",
+        "metric_value",
+        "lookback_days",
+        "confidence_level",
+    ]
+    risk_metrics_df[columns].to_sql(
+        "risk_metrics",
+        engine,
+        schema="mart",
+        if_exists=if_exists,
+        index=False,
+        method="multi",
+    )
+
+
 def load_data_quality_results(engine: Engine, checks_df: pd.DataFrame, if_exists: str = "append") -> None:
     """Load data quality check results into mart.data_quality_results."""
-    checks_df.to_sql("data_quality_results", engine, schema="mart", if_exists=if_exists, index=False, method="multi")
+    checks_df.to_sql(
+        "data_quality_results",
+        engine,
+        schema="mart",
+        if_exists=if_exists,
+        index=False,
+        method="multi",
+        dtype={"check_date": Date(), "run_timestamp": DateTime(timezone=True)},
+    )
