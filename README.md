@@ -88,6 +88,19 @@ Use live Yahoo Finance data before falling back to CSV:
 .venv/bin/python -m src.pipeline --live
 ```
 
+Unbounded live Yahoo Finance runs request the full available daily history (`period=max`) instead of yfinance's
+short default period. You can bound or roll the history window explicitly:
+
+```bash
+.venv/bin/python -m src.pipeline --live --price-period max
+.venv/bin/python -m src.pipeline --live --price-start 2020-01-01 --price-end 2026-01-01
+.venv/bin/python -m src.pipeline --live --price-lookback-days 756
+```
+
+`--price-end` is exclusive, matching yfinance semantics. `--price-period` accepts yfinance daily periods such as
+`1y`, `5y`, `10y`, `ytd`, and `max`, and cannot be combined with `--price-start`, `--price-end`, or
+`--price-lookback-days`.
+
 Require live Yahoo Finance data and fail if yfinance cannot return usable prices:
 
 ```bash
@@ -143,13 +156,15 @@ ETL_DAILY_AT=06:00 \
 ETL_TIMEZONE=America/Edmonton \
 ETL_LOAD_DB=true \
 ETL_LIVE=true \
+ETL_PRICE_PERIOD=max \
 ETL_NO_WRITE=true \
 .venv/bin/python -m src.scheduler
 ```
 
 `ETL_DAILY_AT` runs the ETL once per day at `HH:MM` in `ETL_TIMEZONE`. If `ETL_DAILY_AT` is unset, the scheduler
 uses `ETL_INTERVAL_MINUTES` instead. `ETL_RUN_ON_START=true` performs an immediate refresh before waiting for the
-next scheduled time.
+next scheduled time. The scheduler also accepts `ETL_PRICE_START`, `ETL_PRICE_END`, `ETL_PRICE_LOOKBACK_DAYS`, and
+`ETL_PRICE_PERIOD` with the same rules as the one-off pipeline flags.
 
 Run PostgreSQL and the scheduled ETL service with Docker Compose:
 
@@ -194,6 +209,19 @@ Start Streamlit:
 ```
 
 By default, Streamlit uses bundled sample data. Use the dashboard sidebar Data source control to switch between bundled sample CSV data, live Yahoo Finance data, and PostgreSQL-backed marts after running `--load-db`.
+When Live Yahoo Finance is selected, the sidebar also shows Yahoo history controls. These controls only affect live
+Yahoo Finance dashboard loads; sample CSV and PostgreSQL dashboard modes use their existing data as-is.
+
+Yahoo history options:
+
+- Full history: requests the full available daily history from yfinance using `period=max`.
+- Period: sends a yfinance period such as `10y`, `5y`, `1y`, `ytd`, or `3mo`.
+- Date range: sends an inclusive start date and an exclusive end date, matching yfinance's `start` and `end` semantics.
+- Rolling lookback: fetches the last N calendar days of history ending today.
+
+For risk metrics, longer lookbacks usually produce more stable covariance, VaR, Expected Shortfall, and drawdown
+estimates. Shorter lookbacks can be useful for recent market regimes, but may make the analytics more sensitive to a
+small number of recent observations.
 
 Set `MARKET_DATA_MODE=sample`, `MARKET_DATA_MODE=live`, or `MARKET_DATA_MODE=database` before starting Streamlit if you want to choose the initial sidebar selection.
 

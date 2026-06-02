@@ -7,7 +7,7 @@ import pandas as pd
 import yaml
 
 from src.extract.extract_positions import load_positions_from_config
-from src.extract.extract_prices import ingest_prices, load_assets_config
+from src.extract.extract_prices import ingest_prices, load_assets_config, resolve_price_window
 from src.load.db import get_engine
 from src.load.pipeline_db import load_pipeline_outputs
 from src.quality.data_quality_checks import run_data_quality_checks
@@ -30,6 +30,10 @@ def run_pipeline(
     prefer_live: bool = False,
     allow_fallback: bool = True,
     write_processed: bool = True,
+    price_start: str | None = None,
+    price_end: str | None = None,
+    price_lookback_days: int | None = None,
+    price_period: str | None = None,
 ) -> dict[str, pd.DataFrame | dict]:
     """Run the local market-risk ETL pipeline using live data or sample CSV fallback."""
     root = Path(project_root)
@@ -38,6 +42,10 @@ def run_pipeline(
     tickers = assets["ticker"].tolist()
     raw_prices = ingest_prices(
         tickers=tickers,
+        start=price_start,
+        end=price_end,
+        lookback_days=price_lookback_days,
+        period=price_period,
         csv_fallback_path=root / "data" / "sample" / "sample_prices.csv",
         prefer_live=prefer_live,
         allow_fallback=allow_fallback,
@@ -96,6 +104,16 @@ def load_scenarios(project_root: str | Path = PROJECT_ROOT) -> dict:
         return yaml.safe_load(file) or {"scenarios": []}
 
 
+def _positive_int(value: str) -> int:
+    try:
+        parsed = int(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("must be an integer") from exc
+    if parsed <= 0:
+        raise argparse.ArgumentTypeError("must be greater than zero")
+    return parsed
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run the market-risk ETL pipeline")
     parser.add_argument("--live", action="store_true", help="Use yfinance before falling back to sample CSV")
@@ -107,20 +125,47 @@ def main() -> None:
     parser.add_argument("--no-write", action="store_true", help="Do not write processed CSV outputs")
     parser.add_argument("--load-db", action="store_true", help="Load pipeline outputs into PostgreSQL")
     parser.add_argument("--database-url", help="Override DATABASE_URL for this run")
+    parser.add_argument("--price-start", help="Inclusive price history start date, formatted as YYYY-MM-DD")
+    parser.add_argument("--price-end", help="Exclusive price history end date, formatted as YYYY-MM-DD")
+    parser.add_argument(
+        "--price-lookback-days",
+        type=_positive_int,
+        help="Fetch N calendar days of price history ending at --price-end or today",
+    )
+    parser.add_argument(
+        "--price-period",
+        help="yfinance period to fetch, such as 1y, 5y, ytd, or max. Cannot be combined with date controls.",
+    )
     parser.add_argument(
         "--skip-db-init",
         action="store_true",
         help="Skip PostgreSQL schema initialization before loading outputs",
     )
     args = parser.parse_args()
+    try:
+        resolve_price_window(
+            start=args.price_start,
+            end=args.price_end,
+            lookback_days=args.price_lookback_days,
+            period=args.price_period,
+        )
+    except ValueError as exc:
+        parser.error(str(exc))
+
     outputs = run_pipeline(
         prefer_live=args.live or args.require_live,
         allow_fallback=not args.require_live,
         write_processed=not args.no_write,
+        price_start=args.price_start,
+        price_end=args.price_end,
+        price_lookback_days=args.price_lookback_days,
+        price_period=args.price_period,
     )
     print("Pipeline completed")
     print(f"Price source: {', '.join(sorted(outputs['raw_prices']['source'].dropna().unique()))}")
     print(f"Price rows: {len(outputs['raw_prices'])}")
+    price_dates = pd.to_datetime(outputs["raw_prices"]["price_date"])
+    print(f"Price date range: {price_dates.min().date()} to {price_dates.max().date()}")
     print(f"Return rows: {len(outputs['returns'])}")
     print(f"Portfolio dates: {len(outputs['portfolio_values'])}")
     if args.load_db:

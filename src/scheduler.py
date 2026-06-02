@@ -11,6 +11,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from src.load.db import get_engine
 from src.load.pipeline_db import load_pipeline_outputs
+from src.extract.extract_prices import resolve_price_window
 from src.pipeline import PROJECT_ROOT, run_pipeline
 
 
@@ -26,6 +27,10 @@ class SchedulerConfig:
     run_on_start: bool
     live: bool
     require_live: bool
+    price_start: str | None
+    price_end: str | None
+    price_lookback_days: int | None
+    price_period: str | None
     no_write: bool
     load_db: bool
     database_url: str | None
@@ -90,6 +95,10 @@ def run_scheduled_pipeline(config: SchedulerConfig) -> None:
         prefer_live=config.live or config.require_live,
         allow_fallback=not config.require_live,
         write_processed=not config.no_write,
+        price_start=config.price_start,
+        price_end=config.price_end,
+        price_lookback_days=config.price_lookback_days,
+        price_period=config.price_period,
     )
     LOGGER.info(
         "Pipeline completed: price_rows=%s return_rows=%s portfolio_dates=%s",
@@ -125,6 +134,7 @@ def sleep_until_next_run(seconds: int) -> bool:
 def build_parser() -> argparse.ArgumentParser:
     default_daily_at = os.getenv("ETL_DAILY_AT")
     default_interval = parse_positive_minutes(os.getenv("ETL_INTERVAL_MINUTES", "1440"))
+    default_lookback_days = os.getenv("ETL_PRICE_LOOKBACK_DAYS")
 
     parser = argparse.ArgumentParser(description="Run the market-risk ETL on a schedule")
     parser.add_argument(
@@ -152,6 +162,14 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--live", action="store_true", default=env_flag("ETL_LIVE", False))
     parser.add_argument("--require-live", action="store_true", default=env_flag("ETL_REQUIRE_LIVE", False))
+    parser.add_argument("--price-start", default=os.getenv("ETL_PRICE_START"))
+    parser.add_argument("--price-end", default=os.getenv("ETL_PRICE_END"))
+    parser.add_argument(
+        "--price-lookback-days",
+        type=_argparse_positive_days,
+        default=_argparse_positive_days(default_lookback_days) if default_lookback_days else None,
+    )
+    parser.add_argument("--price-period", default=os.getenv("ETL_PRICE_PERIOD"))
     parser.add_argument("--no-write", action="store_true", default=env_flag("ETL_NO_WRITE", False))
     parser.add_argument("--load-db", action="store_true", default=env_flag("ETL_LOAD_DB", False))
     parser.add_argument("--database-url", default=os.getenv("DATABASE_URL"))
@@ -165,6 +183,15 @@ def parse_args(argv: list[str] | None = None) -> SchedulerConfig:
     args = parser.parse_args(argv)
     if args.live and args.require_live:
         parser.error("--live and --require-live cannot both be enabled")
+    try:
+        resolve_price_window(
+            start=args.price_start,
+            end=args.price_end,
+            lookback_days=args.price_lookback_days,
+            period=args.price_period,
+        )
+    except ValueError as exc:
+        parser.error(str(exc))
 
     try:
         timezone = ZoneInfo(args.timezone)
@@ -179,6 +206,10 @@ def parse_args(argv: list[str] | None = None) -> SchedulerConfig:
         run_on_start=args.run_on_start,
         live=args.live,
         require_live=args.require_live,
+        price_start=args.price_start or None,
+        price_end=args.price_end or None,
+        price_lookback_days=args.price_lookback_days,
+        price_period=args.price_period or None,
         no_write=args.no_write,
         load_db=args.load_db,
         database_url=args.database_url,
@@ -224,6 +255,16 @@ def _argparse_positive_minutes(value: str) -> int:
         return parse_positive_minutes(value)
     except ValueError as exc:
         raise argparse.ArgumentTypeError(str(exc)) from exc
+
+
+def _argparse_positive_days(value: str) -> int:
+    try:
+        days = int(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("price lookback days must be an integer") from exc
+    if days <= 0:
+        raise argparse.ArgumentTypeError("price lookback days must be greater than zero")
+    return days
 
 
 def _request_stop(signum: int, _frame: object) -> None:

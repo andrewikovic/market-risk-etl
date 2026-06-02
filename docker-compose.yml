@@ -31,6 +31,10 @@ services:
       ETL_RUN_ON_START: ${ETL_RUN_ON_START:-true}
       ETL_LOAD_DB: ${ETL_LOAD_DB:-true}
       ETL_LIVE: ${ETL_LIVE:-true}
+      ETL_PRICE_START: ${ETL_PRICE_START:-}
+      ETL_PRICE_END: ${ETL_PRICE_END:-}
+      ETL_PRICE_LOOKBACK_DAYS: ${ETL_PRICE_LOOKBACK_DAYS:-}
+      ETL_PRICE_PERIOD: ${ETL_PRICE_PERIOD:-}
       ETL_NO_WRITE: ${ETL_NO_WRITE:-true}
       ETL_LOG_LEVEL: ${ETL_LOG_LEVEL:-INFO}
     command: ["python", "-m", "src.scheduler"]
