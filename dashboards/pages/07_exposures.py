@@ -12,11 +12,11 @@ if PROJECT_ROOT.name == "dashboards":
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from dashboards.common import load_dashboard_data
+from dashboards.common import load_selected_dashboard_data
 
 
 st.set_page_config(page_title="Exposure Analytics", layout="wide")
-data = load_dashboard_data()
+data = load_selected_dashboard_data()
 exposures = data["exposures"]
 
 st.title("Exposure Analytics")

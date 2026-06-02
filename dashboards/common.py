@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import sys
 import os
+import sys
 from pathlib import Path
 
 import pandas as pd
@@ -18,18 +18,58 @@ from src.load.db import get_engine  # noqa: E402
 from src.load.read_db import read_pipeline_outputs  # noqa: E402
 
 
+DATA_SOURCE_OPTIONS = ("sample", "live", "database")
+DATA_SOURCE_LABELS = {
+    "sample": "Sample CSV",
+    "live": "Live Yahoo Finance",
+    "database": "PostgreSQL database",
+}
+DATA_SOURCE_ALIASES = {
+    "db": "database",
+    "postgres": "database",
+    "postgresql": "database",
+    "live_with_fallback": "live",
+}
+
+
+def normalize_dashboard_data_mode(mode: str | None = None) -> str:
+    """Normalize configured dashboard source names to UI-supported modes."""
+    raw_mode = (mode or os.getenv("MARKET_DATA_MODE", "sample")).strip().lower()
+    normalized = DATA_SOURCE_ALIASES.get(raw_mode, raw_mode)
+    if normalized not in DATA_SOURCE_OPTIONS:
+        raise ValueError("Dashboard data source must be sample, live, or database")
+    return normalized
+
+
+def render_data_source_control() -> str:
+    """Render the shared dashboard data source selector."""
+    default_mode = normalize_dashboard_data_mode()
+    selected_mode = st.sidebar.radio(
+        "Data source",
+        DATA_SOURCE_OPTIONS,
+        index=DATA_SOURCE_OPTIONS.index(default_mode),
+        format_func=lambda mode: DATA_SOURCE_LABELS[mode],
+        key="dashboard_data_source",
+    )
+    st.sidebar.caption("Sample uses bundled CSV data. Live uses Yahoo Finance. Database reads PostgreSQL marts.")
+    return selected_mode
+
+
+def load_selected_dashboard_data() -> dict:
+    """Load dashboard data for the source selected in the sidebar."""
+    return load_dashboard_data(render_data_source_control())
+
+
 @st.cache_data(show_spinner=False)
-def load_dashboard_data() -> dict:
-    """Load analytics for Streamlit pages from sample or live market data."""
-    mode = os.getenv("MARKET_DATA_MODE", "sample").strip().lower()
-    if mode in {"database", "db", "postgres", "postgresql"}:
+def load_dashboard_data(mode: str | None = None) -> dict:
+    """Load analytics for Streamlit pages from the selected data source."""
+    data_source = normalize_dashboard_data_mode(mode)
+    if data_source == "database":
         return read_pipeline_outputs(get_engine())
-    if mode not in {"sample", "live", "live_with_fallback"}:
-        raise ValueError("MARKET_DATA_MODE must be sample, live, live_with_fallback, or database")
     return run_pipeline(
         PROJECT_ROOT,
-        prefer_live=mode in {"live", "live_with_fallback"},
-        allow_fallback=mode != "live",
+        prefer_live=data_source == "live",
+        allow_fallback=data_source == "sample",
         write_processed=False,
     )
 

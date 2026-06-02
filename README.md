@@ -193,19 +193,9 @@ Start Streamlit:
 .venv/bin/streamlit run dashboards/streamlit_app.py
 ```
 
-By default, Streamlit uses bundled sample data. To use yfinance in the dashboard, start Streamlit with:
+By default, Streamlit uses bundled sample data. Use the dashboard sidebar Data source control to switch between bundled sample CSV data, live Yahoo Finance data, and PostgreSQL-backed marts after running `--load-db`.
 
-```bash
-MARKET_DATA_MODE=live .venv/bin/streamlit run dashboards/streamlit_app.py
-```
-
-Use `MARKET_DATA_MODE=live_with_fallback` if you want the dashboard to try yfinance first and fall back to sample data when a live pull fails.
-
-Use PostgreSQL-backed dashboard data after running `--load-db`:
-
-```bash
-MARKET_DATA_MODE=database .venv/bin/streamlit run dashboards/streamlit_app.py
-```
+Set `MARKET_DATA_MODE=sample`, `MARKET_DATA_MODE=live`, or `MARKET_DATA_MODE=database` before starting Streamlit if you want to choose the initial sidebar selection.
 
 Pages:
 

@@ -12,12 +12,12 @@ if PROJECT_ROOT.name == "dashboards":
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from dashboards.common import currency, load_dashboard_data, percent, prepare_dates
+from dashboards.common import currency, load_selected_dashboard_data, percent, prepare_dates
 
 
 st.set_page_config(page_title="Market Risk Analytics Platform", page_icon=":chart_with_upwards_trend:", layout="wide")
 
-data = load_dashboard_data()
+data = load_selected_dashboard_data()
 portfolio_values = prepare_dates(data["portfolio_values"], ("value_date",))
 exposures = data["exposures"]
 risk_metrics = data["risk_metrics"]

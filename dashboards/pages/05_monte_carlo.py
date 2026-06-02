@@ -12,12 +12,12 @@ if PROJECT_ROOT.name == "dashboards":
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from dashboards.common import currency, load_dashboard_data
+from dashboards.common import currency, load_selected_dashboard_data
 from src.risk.monte_carlo import run_correlated_monte_carlo
 
 
 st.set_page_config(page_title="Monte Carlo Simulation", layout="wide")
-data = load_dashboard_data()
+data = load_selected_dashboard_data()
 returns = data["returns"]
 weights = data["current_positions"].set_index("ticker")["weight"].to_dict()
 initial_value = float(data["portfolio_values"]["market_value"].iloc[-1])

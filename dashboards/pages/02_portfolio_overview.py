@@ -12,11 +12,11 @@ if PROJECT_ROOT.name == "dashboards":
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from dashboards.common import currency, load_dashboard_data, prepare_dates
+from dashboards.common import currency, load_selected_dashboard_data, prepare_dates
 
 
 st.set_page_config(page_title="Portfolio Overview", layout="wide")
-data = load_dashboard_data()
+data = load_selected_dashboard_data()
 portfolio_values = prepare_dates(data["portfolio_values"], ("value_date",))
 current_positions = data["current_positions"].sort_values("position_value", ascending=False)
 

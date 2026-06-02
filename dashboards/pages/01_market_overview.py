@@ -12,13 +12,13 @@ if PROJECT_ROOT.name == "dashboards":
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from dashboards.common import load_dashboard_data, prepare_dates
+from dashboards.common import load_selected_dashboard_data, prepare_dates
 from src.transform.calculate_returns import calculate_cumulative_returns
 from src.transform.calculate_volatility import calculate_rolling_volatility
 
 
 st.set_page_config(page_title="Market Overview", layout="wide")
-data = load_dashboard_data()
+data = load_selected_dashboard_data()
 prices = prepare_dates(data["stg_prices"], ("price_date",))
 returns = prepare_dates(data["returns"], ("return_date",))
 

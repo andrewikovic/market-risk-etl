@@ -12,11 +12,11 @@ if PROJECT_ROOT.name == "dashboards":
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from dashboards.common import load_dashboard_data, prepare_dates
+from dashboards.common import load_selected_dashboard_data, prepare_dates
 
 
 st.set_page_config(page_title="Data Quality", layout="wide")
-data = load_dashboard_data()
+data = load_selected_dashboard_data()
 checks = prepare_dates(data["data_quality"], ("check_date", "run_timestamp"))
 
 st.title("Data Quality")

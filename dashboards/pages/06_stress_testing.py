@@ -13,12 +13,12 @@ if PROJECT_ROOT.name == "dashboards":
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from dashboards.common import currency, load_dashboard_data, load_dashboard_scenarios
+from dashboards.common import currency, load_dashboard_scenarios, load_selected_dashboard_data
 from src.risk.stress_testing import run_stress_test
 
 
 st.set_page_config(page_title="Stress Testing", layout="wide")
-data = load_dashboard_data()
+data = load_selected_dashboard_data()
 scenarios = load_dashboard_scenarios()["scenarios"]
 positions = data["current_positions"]
 

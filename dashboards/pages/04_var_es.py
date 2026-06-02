@@ -13,7 +13,7 @@ if PROJECT_ROOT.name == "dashboards":
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from dashboards.common import currency, load_dashboard_data
+from dashboards.common import currency, load_selected_dashboard_data
 from src.risk.expected_shortfall import calculate_expected_shortfall
 from src.risk.historical_var import calculate_historical_var
 from src.risk.monte_carlo import run_correlated_monte_carlo
@@ -21,7 +21,7 @@ from src.risk.parametric_var import calculate_parametric_var
 
 
 st.set_page_config(page_title="VaR and Expected Shortfall", layout="wide")
-data = load_dashboard_data()
+data = load_selected_dashboard_data()
 portfolio_values = data["portfolio_values"]
 returns = data["returns"]
 weights = data["current_positions"].set_index("ticker")["weight"].to_dict()
