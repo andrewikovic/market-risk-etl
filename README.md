@@ -69,6 +69,79 @@ Core marts include:
 - `mart.monte_carlo_results`
 - `mart.data_quality_results`
 
+## Using The Software
+
+Prerequisites:
+
+- Python 3.11 or newer.
+- Docker and Docker Compose only if you want PostgreSQL or scheduled ETL.
+- Internet access only if you want live Yahoo Finance data.
+
+Set up the Python environment:
+
+```bash
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements.txt
+```
+
+Start the dashboard with bundled sample data:
+
+```bash
+.venv/bin/streamlit run dashboards/streamlit_app.py
+```
+
+Open the local Streamlit URL shown in the terminal. The app starts with sample CSV data, so no database or live market
+data connection is required for first use. In the sidebar, use Data source to switch between Sample CSV, Live Yahoo
+Finance, and PostgreSQL database. The selected data source and Yahoo history options persist while you move between
+dashboard pages in the same Streamlit session.
+
+To change the portfolio or assumptions, edit `config/portfolio.yml`, `config/assets.yml`, or `config/scenarios.yml`,
+then rerun the pipeline or refresh the dashboard.
+
+Run the ETL once and write processed CSV outputs:
+
+```bash
+.venv/bin/python -m src.pipeline
+```
+
+Use live Yahoo Finance data:
+
+```bash
+.venv/bin/python -m src.pipeline --live
+```
+
+Choose the historical Yahoo Finance window when needed:
+
+```bash
+.venv/bin/python -m src.pipeline --live --price-period max
+.venv/bin/python -m src.pipeline --live --price-start 2020-01-01 --price-end 2026-01-01
+.venv/bin/python -m src.pipeline --live --price-lookback-days 756
+```
+
+Load the warehouse into PostgreSQL:
+
+```bash
+cp .env.example .env
+docker compose up -d postgres
+.venv/bin/python -m src.pipeline --load-db
+```
+
+After loading PostgreSQL, start Streamlit and select PostgreSQL database in the dashboard sidebar.
+
+Run the scheduled ETL service with Docker Compose:
+
+```bash
+cp .env.example .env
+docker compose --profile scheduler up -d --build
+docker compose logs -f etl-scheduler
+```
+
+Run the tests:
+
+```bash
+.venv/bin/python -m pytest -q
+```
+
 ## ETL Pipeline
 
 Run the local deterministic pipeline:
@@ -209,8 +282,14 @@ Start Streamlit:
 ```
 
 By default, Streamlit uses bundled sample data. Use the dashboard sidebar Data source control to switch between bundled sample CSV data, live Yahoo Finance data, and PostgreSQL-backed marts after running `--load-db`.
+
+The selected data source persists while you move between dashboard pages in the same Streamlit session, so changing
+from Sample CSV to Live Yahoo Finance or PostgreSQL does not reset when you open another page.
+
 When Live Yahoo Finance is selected, the sidebar also shows Yahoo history controls. These controls only affect live
 Yahoo Finance dashboard loads; sample CSV and PostgreSQL dashboard modes use their existing data as-is.
+
+The selected Yahoo history mode and its input values also persist across page switches.
 
 Yahoo history options:
 
