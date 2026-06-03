@@ -3,11 +3,16 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
+from src.transform.currency_conversion import FXRateProvider, convert_prices_to_base, resolve_base_currency
+
 
 def calculate_portfolio_values(
     positions_df: pd.DataFrame,
     prices_df: pd.DataFrame,
     portfolio_name: str | None = None,
+    base_currency: str | None = None,
+    fx_rates: dict | pd.DataFrame | None = None,
+    fx_rate_provider: FXRateProvider | None = None,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Calculate daily portfolio market value and position-level P&L."""
     required_positions = {"ticker", "quantity"}
@@ -24,12 +29,30 @@ def calculate_portfolio_values(
     positions["quantity"] = pd.to_numeric(positions["quantity"], errors="coerce")
     quantity = positions.groupby("ticker")["quantity"].sum()
     portfolio_name = portfolio_name or positions.get("portfolio_name", pd.Series(["Portfolio"])).iloc[0]
+    base_currency = resolve_base_currency(base_currency, positions)
+    if base_currency is not None and "currency" not in positions.columns:
+        positions["currency"] = base_currency
+    ticker_currencies = None
+    if "currency" in positions.columns:
+        ticker_currencies = positions.drop_duplicates("ticker").set_index("ticker")["currency"]
 
-    prices = prices_df[["ticker", "price_date", "adjusted_close"]].copy()
+    price_columns = ["ticker", "price_date", "adjusted_close"]
+    price_columns.extend(col for col in ["currency", "fx_rate_to_base"] if col in prices_df.columns)
+    prices = prices_df[price_columns].copy()
     prices["ticker"] = prices["ticker"].astype(str).str.upper().str.strip()
     prices["price_date"] = pd.to_datetime(prices["price_date"])
     prices["adjusted_close"] = pd.to_numeric(prices["adjusted_close"], errors="coerce")
     prices = prices[prices["ticker"].isin(quantity.index) & prices["adjusted_close"].gt(0)]
+    if base_currency is not None:
+        prices = convert_prices_to_base(
+            prices,
+            ticker_currencies=ticker_currencies,
+            base_currency=base_currency,
+            fx_rates=fx_rates,
+            fx_rate_provider=fx_rate_provider,
+            price_col="adjusted_close",
+            date_col="price_date",
+        )
 
     price_matrix = (
         prices.pivot_table(index="price_date", columns="ticker", values="adjusted_close", aggfunc="last")
@@ -40,6 +63,15 @@ def calculate_portfolio_values(
     price_matrix = price_matrix[quantity.index]
     if price_matrix.empty:
         raise ValueError("No complete price history available for portfolio valuation")
+    fx_matrix = None
+    if base_currency is not None and "fx_rate_to_base" in prices.columns:
+        fx_matrix = (
+            prices.pivot_table(index="price_date", columns="ticker", values="fx_rate_to_base", aggfunc="last")
+            .sort_index()
+            .ffill()
+            .reindex(price_matrix.index)
+        )
+        fx_matrix = fx_matrix[quantity.index]
 
     position_values = price_matrix.multiply(quantity, axis=1)
     market_value = position_values.sum(axis=1)
@@ -74,6 +106,9 @@ def calculate_portfolio_values(
     pnl_long["weight"] = weights.stack().to_numpy(dtype=float)
     pnl_long["portfolio_name"] = portfolio_name
     pnl_long["value_date"] = pd.to_datetime(pnl_long["value_date"]).dt.date
+    if fx_matrix is not None:
+        pnl_long["fx_rate_to_base"] = fx_matrix.stack().to_numpy(dtype=float)
+        pnl_long["base_currency"] = base_currency
 
     metadata_cols = [col for col in ["ticker", "asset_class", "sector", "currency"] if col in positions.columns]
     if len(metadata_cols) > 1:
@@ -89,7 +124,11 @@ def calculate_portfolio_values(
         "contribution_to_return",
         "weight",
     ]
-    extra = [col for col in ["asset_class", "sector", "currency"] if col in pnl_long.columns]
+    extra = [
+        col
+        for col in ["asset_class", "sector", "currency", "fx_rate_to_base", "base_currency"]
+        if col in pnl_long.columns
+    ]
     return portfolio_values.reset_index(drop=True), pnl_long[ordered + extra].reset_index(drop=True)
 
 
@@ -97,8 +136,16 @@ def calculate_pnl_attribution(
     positions_df: pd.DataFrame,
     prices_df: pd.DataFrame,
     returns_df: pd.DataFrame | None = None,
+    base_currency: str | None = None,
+    fx_rates: dict | pd.DataFrame | None = None,
+    fx_rate_provider: FXRateProvider | None = None,
 ) -> pd.DataFrame:
     """Calculate position-level P&L and contribution to portfolio return."""
-    _, position_pnl = calculate_portfolio_values(positions_df, prices_df)
+    _, position_pnl = calculate_portfolio_values(
+        positions_df,
+        prices_df,
+        base_currency=base_currency,
+        fx_rates=fx_rates,
+        fx_rate_provider=fx_rate_provider,
+    )
     return position_pnl
-

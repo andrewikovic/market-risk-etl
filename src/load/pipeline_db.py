@@ -11,11 +11,18 @@ from src.load.db import initialize_database
 from src.load.load_marts import (
     load_daily_returns,
     load_data_quality_results,
+    load_efficient_frontier,
     load_exposures,
+    load_factor_exposures,
+    load_optimized_portfolio,
     load_portfolio_values,
     load_position_pnl,
+    load_rebalancing_trades,
     load_risk_metrics,
+    load_risk_contributions,
     load_staging_prices,
+    load_var_backtest,
+    load_var_contributions,
 )
 from src.load.load_raw import load_assets, load_positions, load_raw_prices
 
@@ -24,6 +31,13 @@ PIPELINE_TABLES = [
     "mart.monte_carlo_terminal_values",
     "mart.monte_carlo_results",
     "mart.monte_carlo_runs",
+    "mart.rebalancing_trades",
+    "mart.optimized_portfolio",
+    "mart.efficient_frontier",
+    "mart.factor_exposures",
+    "mart.risk_contributions",
+    "mart.var_contributions",
+    "mart.var_backtest_exceptions",
     "mart.stress_test_results",
     "mart.data_quality_results",
     "mart.exposures",
@@ -130,10 +144,24 @@ def load_pipeline_outputs(
     load_exposures(engine, outputs["exposures"])
     if not risk_metrics.empty:
         load_risk_metrics(engine, risk_metrics)
+    load_var_backtest(engine, outputs.get("var_backtest", pd.DataFrame()))
+    load_var_contributions(engine, outputs.get("var_contributions", pd.DataFrame()))
+    load_risk_contributions(engine, outputs.get("risk_contributions", pd.DataFrame()))
+    load_factor_exposures(engine, outputs.get("factor_exposures", pd.DataFrame()))
+    load_efficient_frontier(engine, outputs.get("efficient_frontier", pd.DataFrame()))
+    load_optimized_portfolio(engine, outputs.get("optimized_portfolio", pd.DataFrame()))
+    load_rebalancing_trades(engine, outputs.get("rebalancing_trades", pd.DataFrame()))
     load_data_quality_results(engine, outputs["data_quality"])
 
     counts = {name: len(outputs[name]) for name in required_frames}
     counts["risk_metrics"] = len(risk_metrics)
+    counts["var_backtest"] = len(outputs.get("var_backtest", []))
+    counts["var_contributions"] = len(outputs.get("var_contributions", []))
+    counts["risk_contributions"] = len(outputs.get("risk_contributions", []))
+    counts["factor_exposures"] = len(outputs.get("factor_exposures", []))
+    counts["efficient_frontier"] = len(outputs.get("efficient_frontier", []))
+    counts["optimized_portfolio"] = len(outputs.get("optimized_portfolio", []))
+    counts["rebalancing_trades"] = len(outputs.get("rebalancing_trades", []))
     return counts
 
 

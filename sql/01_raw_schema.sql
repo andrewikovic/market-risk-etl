@@ -34,6 +34,9 @@ CREATE TABLE IF NOT EXISTS raw.portfolio_positions (
     as_of_date DATE NOT NULL,
     asset_class TEXT,
     sector TEXT,
-    currency TEXT
+    currency TEXT,
+    base_currency TEXT
 );
 
+ALTER TABLE raw.portfolio_positions
+    ADD COLUMN IF NOT EXISTS base_currency TEXT;

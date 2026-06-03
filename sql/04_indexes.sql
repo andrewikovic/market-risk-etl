@@ -5,5 +5,11 @@ CREATE INDEX IF NOT EXISTS idx_mart_portfolio_values_date ON mart.portfolio_valu
 CREATE INDEX IF NOT EXISTS idx_mart_position_pnl_date ON mart.position_pnl (portfolio_name, value_date);
 CREATE INDEX IF NOT EXISTS idx_mart_risk_metrics_date ON mart.risk_metrics (portfolio_name, metric_date);
 CREATE INDEX IF NOT EXISTS idx_mart_exposures_date ON mart.exposures (portfolio_name, exposure_date);
+CREATE INDEX IF NOT EXISTS idx_mart_var_backtest_date ON mart.var_backtest_exceptions (portfolio_name, backtest_date);
+CREATE INDEX IF NOT EXISTS idx_mart_var_contrib_date ON mart.var_contributions (portfolio_name, metric_date);
+CREATE INDEX IF NOT EXISTS idx_mart_risk_contrib_date ON mart.risk_contributions (portfolio_name, metric_date);
+CREATE INDEX IF NOT EXISTS idx_mart_factor_exposures_date ON mart.factor_exposures (portfolio_name, metric_date);
+CREATE INDEX IF NOT EXISTS idx_mart_frontier_date ON mart.efficient_frontier (portfolio_name, run_date);
+CREATE INDEX IF NOT EXISTS idx_mart_optimized_date ON mart.optimized_portfolio (portfolio_name, run_date);
+CREATE INDEX IF NOT EXISTS idx_mart_rebalancing_date ON mart.rebalancing_trades (portfolio_name, run_date);
 CREATE INDEX IF NOT EXISTS idx_mart_quality_run ON mart.data_quality_results (run_timestamp, status, severity);
-

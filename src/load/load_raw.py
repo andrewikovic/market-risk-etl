@@ -16,7 +16,7 @@ def load_assets(engine: Engine, assets_df: pd.DataFrame, if_exists: str = "appen
 
 def load_positions(engine: Engine, positions_df: pd.DataFrame, if_exists: str = "append") -> None:
     """Load portfolio positions into raw.portfolio_positions."""
-    columns = ["portfolio_name", "ticker", "quantity", "as_of_date", "asset_class", "sector", "currency"]
+    columns = ["portfolio_name", "ticker", "quantity", "as_of_date", "asset_class", "sector", "currency", "base_currency"]
     positions_df[columns].to_sql(
         "portfolio_positions",
         engine,
@@ -25,4 +25,3 @@ def load_positions(engine: Engine, positions_df: pd.DataFrame, if_exists: str = 
         index=False,
         method="multi",
     )
-

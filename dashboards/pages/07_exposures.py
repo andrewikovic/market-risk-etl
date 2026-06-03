@@ -18,8 +18,11 @@ from dashboards.common import load_selected_dashboard_data
 st.set_page_config(page_title="Exposure Analytics", layout="wide")
 data = load_selected_dashboard_data()
 exposures = data["exposures"]
+base_currency_values = exposures.get("base_currency")
 
 st.title("Exposure Analytics")
+if base_currency_values is not None and base_currency_values.dropna().any():
+    st.caption(f"Market values shown in {base_currency_values.dropna().iloc[0]}.")
 
 exposure_type = st.selectbox(
     "Exposure Type",

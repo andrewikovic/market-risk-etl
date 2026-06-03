@@ -2,7 +2,7 @@
 
 This project is a market risk ETL and analytics platform built with Python, SQL, and Streamlit. It ingests multi-asset market data, normalizes raw prices into analytical tables, calculates portfolio returns and risk metrics, and displays results through an interactive dashboard.
 
-The system calculates daily returns, rolling volatility, beta to benchmark, correlation matrices, historical/parametric/Monte Carlo VaR, Expected Shortfall, drawdowns, stress-test losses, sector and asset-class exposures, and P&L attribution.
+The system calculates daily returns, rolling volatility, beta to benchmark, correlation matrices, historical/parametric/Monte Carlo VaR, Expected Shortfall, VaR backtesting, marginal and component VaR, asset-level risk contribution, factor exposures, portfolio optimization, drawdowns, stress-test losses, sector and asset-class exposures, currency-aware P&L, and P&L attribution.
 
 ## Project Overview
 
@@ -11,8 +11,9 @@ The platform models a realistic internal risk reporting workflow:
 1. Extract adjusted close prices from Yahoo Finance or an offline CSV fallback.
 2. Load raw market and portfolio inputs into PostgreSQL raw tables.
 3. Clean prices into staging tables with quality flags.
-4. Transform prices into returns, portfolio values, position P&L, exposures, and risk metrics.
-5. Present risk and performance views in Streamlit dashboards.
+4. Transform prices into returns, portfolio values, currency-aware position P&L, exposures, and risk metrics.
+5. Calculate portfolio VaR, backtesting exceptions, contribution analytics, factor exposures, and optimized target weights.
+6. Present risk, performance, attribution, and optimization views in Streamlit dashboards.
 
 The default sample portfolio is a USD multi-asset ETF and equity portfolio with positions in SPY, AAPL, MSFT, GLD, and TLT. The dashboard works from bundled sample data, so it can be reviewed before any live API pull or PostgreSQL instance is configured.
 
@@ -64,9 +65,17 @@ Core marts include:
 - `mart.position_pnl`
 - `mart.risk_metrics`
 - `mart.exposures`
+- `mart.var_backtest_exceptions`
+- `mart.var_contributions`
+- `mart.risk_contributions`
+- `mart.factor_exposures`
+- `mart.efficient_frontier`
+- `mart.optimized_portfolio`
+- `mart.rebalancing_trades`
 - `mart.stress_test_results`
 - `mart.monte_carlo_runs`
 - `mart.monte_carlo_results`
+- `mart.monte_carlo_terminal_values`
 - `mart.data_quality_results`
 
 ## Using The Software
@@ -217,6 +226,9 @@ docker exec -it market-risk-postgres psql -U risk_user -d market_risk
 SELECT COUNT(*) FROM raw.prices;
 SELECT * FROM mart.portfolio_values ORDER BY value_date DESC LIMIT 5;
 SELECT * FROM mart.risk_metrics ORDER BY metric_date DESC, metric_name;
+SELECT * FROM mart.var_backtest_exceptions ORDER BY backtest_date DESC, confidence_level LIMIT 10;
+SELECT * FROM mart.var_contributions ORDER BY metric_date DESC, confidence_level, ticker;
+SELECT * FROM mart.optimized_portfolio ORDER BY run_date DESC, ticker;
 ```
 
 ### Scheduled ETL Refresh
@@ -267,11 +279,91 @@ The analytics layer includes:
 - Correlation and covariance matrices.
 - Historical VaR and Expected Shortfall from empirical returns.
 - Parametric VaR using the normal approximation.
+- VaR exception tracking and Kupiec proportion-of-failures backtesting.
+- Marginal and component VaR by asset, with contribution reconciliation.
+- Asset-level volatility and VaR risk contribution using covariance.
 - Correlated multi-asset Monte Carlo simulation using Cholesky decomposition.
+- Multi-currency valuation with injected FX rates and explicit missing-rate errors.
+- Factor exposure estimation from asset and factor return regressions.
+- Efficient frontier generation, constrained optimization, and rebalance trades.
 - Current and maximum drawdowns with worst-period detection.
 - Asset-class, sector, ticker, currency, and country exposures.
 - Position-level P&L and contribution to portfolio return.
 - Scenario stress testing with ticker shocks overriding sector shocks, and sector shocks overriding asset-class shocks.
+
+The one-off pipeline and dashboard both compute these analytics. When `--load-db` is used, the same outputs are
+persisted to PostgreSQL marts and read back by the dashboard when the Data source sidebar control is set to
+PostgreSQL database.
+
+### Advanced Analytics Examples
+
+VaR backtesting accepts dated realized P&L and either a scalar or dated VaR series:
+
+```python
+from src.risk.backtesting import generate_exception_report
+
+report = generate_exception_report(
+    realized_pnl=portfolio_values.set_index("value_date")["daily_pnl"],
+    var_estimates=125_000,
+    confidence_level=0.99,
+)
+```
+
+Component VaR and risk contribution use aligned asset returns plus portfolio weights:
+
+```python
+from src.risk.parametric_var import calculate_component_var
+from src.risk.risk_contribution import calculate_asset_risk_contributions
+
+component_var = calculate_component_var(returns, weights, portfolio_value=latest_value, confidence_level=0.975)
+risk_contribution = calculate_asset_risk_contributions(returns, weights, portfolio_value=latest_value)
+```
+
+Currency conversion is optional and uses the portfolio `base_currency` when present. Provide FX rates as a DataFrame
+with `rate_date`, `from_currency`, `to_currency`, and `rate`, or inject an object with `get_rate(from_currency,
+to_currency, rate_date)`. Missing non-base rates raise `MissingFXRateError`.
+
+```python
+from src.transform.calculate_pnl import calculate_portfolio_values
+
+portfolio_values, position_pnl = calculate_portfolio_values(positions, prices, fx_rates=fx_rates)
+```
+
+Factor exposures are estimated with ordinary least squares over overlapping asset and factor return dates:
+
+```python
+from src.risk.factor_model import estimate_factor_exposures
+
+factor_model = estimate_factor_exposures(asset_returns, factor_returns, weights=weights)
+asset_betas = factor_model["asset_exposures"]
+portfolio_betas = factor_model["portfolio_factor_exposure"]
+```
+
+Portfolio optimization supports long-only, fully invested portfolios with min/max weights and optional target return
+or target volatility:
+
+```python
+from src.risk.optimization import calculate_rebalancing_trades, generate_efficient_frontier, optimize_portfolio
+
+frontier = generate_efficient_frontier(expected_returns, covariance_matrix, points=25, max_weight=0.40)
+target = optimize_portfolio(expected_returns, covariance_matrix, max_weight=0.40, target_return=0.08)
+trades = calculate_rebalancing_trades(current_weights, target["weights"], portfolio_value=latest_value)
+```
+
+### Pipeline Output Keys
+
+`run_pipeline(write_processed=False)` returns DataFrames for the advanced analytics under these keys:
+
+- `var_backtest`
+- `var_contributions`
+- `risk_contributions`
+- `factor_exposures`
+- `efficient_frontier`
+- `optimized_portfolio`
+- `rebalancing_trades`
+
+When processed CSV writing is enabled, these frames are written to `data/processed/` alongside the existing prices,
+returns, portfolio values, P&L, exposures, and quality outputs.
 
 ## Dashboard
 
@@ -315,6 +407,17 @@ Pages:
 - Exposure Analytics
 - P&L Attribution
 - Data Quality
+- VaR Backtesting
+- Risk Contributions
+- Factor Model
+- Portfolio Optimization
+
+The advanced pages are backed by the same pipeline outputs in all dashboard modes:
+
+- VaR Backtesting shows exception history, breach severity, Kupiec statistic, p-value, and pass/fail status.
+- Risk Contributions shows marginal VaR, component VaR, contribution percentages, volatility contribution, and reconciliation checks.
+- Factor Model shows asset betas, portfolio factor exposure, residual volatility, idiosyncratic variance, and R-squared.
+- Portfolio Optimization shows the efficient frontier, optimized target weights, constraint diagnostics, and rebalance trades.
 
 ## Dashboard Screenshots
 
@@ -389,6 +492,7 @@ Run the test suite:
 ```
 
 Coverage includes returns, rolling volatility, beta alignment, drawdowns, VaR, Expected Shortfall, stress testing, exposures, Monte Carlo reproducibility, simulated correlations, and data quality checks.
+Coverage also includes VaR backtesting, component VaR reconciliation, asset-level risk contributions, multi-currency valuation, factor regression against known synthetic loadings, constrained optimization, rebalancing trades, and pipeline output integration for the dashboard/database analytics.
 
 ## Known Limitations
 
@@ -404,16 +508,10 @@ Coverage includes returns, rolling volatility, beta alignment, drawdowns, VaR, E
 - One-command full database bootstrap that starts Postgres, waits for health, and runs `src.pipeline --load-db`
 - Scheduled ETL failure notifications and backfill controls
 - Exportable PDF/CSV risk report
-- Factor model
-- Risk contribution by asset
-- Marginal VaR
-- Component VaR
-- VaR backtesting
-- Currency conversion
-- Portfolio rebalancing
-- Efficient frontier
-- Optimization
+- External factor data configuration beyond the built-in sample proxy factors
+- Transaction cost, lot-size, and turnover-aware optimization constraints
+- Historical FX-rate ingestion from a live market data source
 
 ## Resume Bullet
 
-Built a Python, SQL, and Streamlit market-risk ETL platform that ingests multi-asset market data, normalizes raw price feeds into analytical marts, and calculates daily returns, rolling volatility, beta, correlation matrices, historical/parametric/Monte Carlo VaR, Expected Shortfall, drawdowns, stress-test losses, sector and asset-class exposures, and P&L attribution.
+Built a Python, SQL, and Streamlit market-risk ETL platform that ingests multi-asset market data, normalizes raw price feeds into analytical marts, and calculates returns, rolling volatility, beta, historical/parametric/Monte Carlo VaR, Expected Shortfall, VaR backtests, component VaR, asset risk contribution, factor exposures, portfolio optimization, stress-test losses, currency-aware exposures, and P&L attribution.

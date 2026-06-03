@@ -45,8 +45,6 @@ cols[1].plotly_chart(
     width="stretch",
 )
 
-st.dataframe(
-    latest[["value_date", "ticker", "daily_pnl", "contribution_to_return", "weight", "asset_class", "sector"]],
-    width="stretch",
-    hide_index=True,
-)
+columns = ["value_date", "ticker", "daily_pnl", "contribution_to_return", "weight", "asset_class", "sector"]
+columns.extend(col for col in ["currency", "fx_rate_to_base", "base_currency"] if col in latest.columns)
+st.dataframe(latest[columns], width="stretch", hide_index=True)
