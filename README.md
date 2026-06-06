@@ -421,7 +421,7 @@ The advanced pages are backed by the same pipeline outputs in all dashboard mode
 
 ## Dashboard Screenshots
 
-Add screenshots after running Streamlit locally:
+Screenshot image files are not checked in yet. After running Streamlit locally, capture and save:
 
 ```text
 docs/screenshots/market_overview.png
@@ -505,12 +505,20 @@ Coverage also includes VaR backtesting, component VaR reconciliation, asset-leve
 
 ## Future Improvements
 
-- One-command full database bootstrap that starts Postgres, waits for health, and runs `src.pipeline --load-db`
-- Scheduled ETL failure notifications and backfill controls
-- Exportable PDF/CSV risk report
-- External factor data configuration beyond the built-in sample proxy factors
-- Transaction cost, lot-size, and turnover-aware optimization constraints
-- Historical FX-rate ingestion from a live market data source
+The original portfolio-demo roadmap items for PostgreSQL, end-to-end mart loads, scheduled ETL, dashboard data-source
+switching, Yahoo history controls, VaR backtesting, VaR contribution analytics, risk contribution, factor regression,
+portfolio optimization, and multi-currency valuation are implemented.
+
+Remaining production-oriented TODOs:
+
+- ETL observability: add retry/backoff for live pulls, structured failure logging, raw-pull audit rows, and email/Slack/webhook alerts for failed scheduled runs.
+- Report export: add dashboard download actions for selected risk tables and a generated PDF/CSV risk pack with portfolio summary, VaR/ES, stress tests, exposures, and backtesting results.
+- Factor data configuration: let `src.pipeline` read external factor-return sources from config or CLI flags, validate factor coverage, and fall back clearly to built-in proxy factors when no source is configured.
+- Optimization realism: add transaction costs, lot-size rounding, turnover limits, tax/dividend assumptions, and liquidity caps to target weights and rebalancing trades.
+- Live FX ingestion: fetch historical FX rates for non-base-currency assets, persist raw FX rates, and feed those rates into P&L, exposure, and valuation calculations.
+- Hosted dashboard security: add authentication and access-control guidance for deployed Streamlit environments.
+- Deployment engineering: add CI checks, cloud deployment examples, environment-specific config, and secrets-management guidance.
+- Screenshots: capture current dashboard pages and check in image files under `docs/screenshots/`.
 
 ## Resume Bullet
 
