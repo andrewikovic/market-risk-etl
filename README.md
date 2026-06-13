@@ -2,6 +2,7 @@
 
 [![CI](https://github.com/andrewikovic/market-risk-etl/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/andrewikovic/market-risk-etl/actions/workflows/ci.yml)
 [![Coverage](https://img.shields.io/badge/coverage-91%25-brightgreen)](https://github.com/andrewikovic/market-risk-etl/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 This project is a market risk ETL and analytics platform built with Python, SQL, and Streamlit. It ingests multi-asset market data, normalizes raw prices into analytical tables, calculates portfolio returns and risk metrics, and displays results through an interactive dashboard.
 
@@ -534,3 +535,7 @@ Remaining production-oriented TODOs:
 ## Resume Bullet
 
 Built a Python, SQL, and Streamlit market-risk ETL platform that ingests multi-asset market data, normalizes raw price feeds into analytical marts, and calculates returns, rolling volatility, beta, historical/parametric/Monte Carlo VaR, Expected Shortfall, VaR backtests, component VaR, asset risk contribution, factor exposures, portfolio optimization, stress-test losses, currency-aware exposures, and P&L attribution.
+
+## License
+
+This project is licensed under the MIT License. See [LICENSE](LICENSE).
