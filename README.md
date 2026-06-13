@@ -1,6 +1,6 @@
 # Market Risk Analytics Platform
 
-[![CI](https://github.com/andrewikovic/market-risk-etl/actions/workflows/ci.yml/badge.svg)](https://github.com/andrewikovic/market-risk-etl/actions/workflows/ci.yml)
+[![CI](https://github.com/andrewikovic/market-risk-etl/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/andrewikovic/market-risk-etl/actions/workflows/ci.yml)
 
 This project is a market risk ETL and analytics platform built with Python, SQL, and Streamlit. It ingests multi-asset market data, normalizes raw prices into analytical tables, calculates portfolio returns and risk metrics, and displays results through an interactive dashboard.
 
