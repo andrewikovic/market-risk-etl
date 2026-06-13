@@ -13,7 +13,7 @@ def benchmark_tickers_from_assets(assets_df: pd.DataFrame) -> list[str]:
         return []
     return sorted(
         ticker
-        for ticker in assets_df["benchmark_ticker"].dropna().astype(str).str.upper().unique()
+        for ticker in assets_df["benchmark_ticker"].dropna().astype(str).str.strip().str.upper().unique()
         if ticker
     )
 
@@ -37,4 +37,3 @@ def ingest_benchmark_prices(
         csv_fallback_path=csv_fallback_path,
         prefer_live=prefer_live,
     )
-

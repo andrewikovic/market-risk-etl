@@ -145,7 +145,7 @@ def fetch_prices_yfinance(
     except ImportError as exc:
         raise RuntimeError("yfinance is not installed") from exc
 
-    ticker_list = sorted({ticker.upper().strip() for ticker in tickers})
+    ticker_list = sorted({clean for ticker in tickers if (clean := ticker.upper().strip())})
     if not ticker_list:
         raise ValueError("At least one ticker is required")
 
@@ -219,7 +219,7 @@ def ingest_prices(
     allow_fallback: bool = True,
 ) -> pd.DataFrame:
     """Ingest prices from yfinance with an optional CSV fallback for offline development."""
-    ticker_set = {ticker.upper().strip() for ticker in tickers}
+    ticker_set = {clean for ticker in tickers if (clean := ticker.upper().strip())}
     if prefer_live:
         try:
             return fetch_prices_yfinance(
