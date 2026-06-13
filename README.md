@@ -1,5 +1,7 @@
 # Market Risk Analytics Platform
 
+[![CI](https://github.com/andrewikovic/market-risk-etl/actions/workflows/ci.yml/badge.svg)](https://github.com/andrewikovic/market-risk-etl/actions/workflows/ci.yml)
+
 This project is a market risk ETL and analytics platform built with Python, SQL, and Streamlit. It ingests multi-asset market data, normalizes raw prices into analytical tables, calculates portfolio returns and risk metrics, and displays results through an interactive dashboard.
 
 The system calculates daily returns, rolling volatility, beta to benchmark, correlation matrices, historical/parametric/Monte Carlo VaR, Expected Shortfall, VaR backtesting, marginal and component VaR, asset-level risk contribution, factor exposures, portfolio optimization, drawdowns, stress-test losses, sector and asset-class exposures, currency-aware P&L, and P&L attribution.
@@ -491,6 +493,14 @@ Run the test suite:
 .venv/bin/python -m pytest -q
 ```
 
+## Continuous Integration
+
+GitHub Actions runs the test suite on pull requests and on pushes to `main`. The `CI` workflow uses Ubuntu, Python 3.12, pip dependency caching, installs `requirements.txt`, and runs:
+
+```bash
+python -m pytest -q
+```
+
 Coverage includes returns, rolling volatility, beta alignment, drawdowns, VaR, Expected Shortfall, stress testing, exposures, Monte Carlo reproducibility, simulated correlations, and data quality checks.
 Coverage also includes VaR backtesting, component VaR reconciliation, asset-level risk contributions, multi-currency valuation, factor regression against known synthetic loadings, constrained optimization, rebalancing trades, and pipeline output integration for the dashboard/database analytics.
 
@@ -517,7 +527,7 @@ Remaining production-oriented TODOs:
 - Optimization realism: add transaction costs, lot-size rounding, turnover limits, tax/dividend assumptions, and liquidity caps to target weights and rebalancing trades.
 - Live FX ingestion: fetch historical FX rates for non-base-currency assets, persist raw FX rates, and feed those rates into P&L, exposure, and valuation calculations.
 - Hosted dashboard security: add authentication and access-control guidance for deployed Streamlit environments.
-- Deployment engineering: add CI checks, cloud deployment examples, environment-specific config, and secrets-management guidance.
+- Deployment engineering: add cloud deployment examples, environment-specific config, and secrets-management guidance.
 - Screenshots: capture current dashboard pages and check in image files under `docs/screenshots/`.
 
 ## Resume Bullet
