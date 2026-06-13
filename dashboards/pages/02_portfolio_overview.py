@@ -12,7 +12,7 @@ if PROJECT_ROOT.name == "dashboards":
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from dashboards.common import currency, load_selected_dashboard_data, prepare_dates
+from dashboards.common import currency, load_selected_dashboard_data, prepare_dates, render_table_download
 
 
 st.set_page_config(page_title="Portfolio Overview", layout="wide")
@@ -50,8 +50,12 @@ st.plotly_chart(
     ),
     width="stretch",
 )
+holdings_table = current_positions[
+    ["ticker", "quantity", "current_price", "position_value", "weight", "asset_class", "sector"]
+]
 st.dataframe(
-    current_positions[["ticker", "quantity", "current_price", "position_value", "weight", "asset_class", "sector"]],
+    holdings_table,
     width="stretch",
     hide_index=True,
 )
+render_table_download(holdings_table, "portfolio_holdings", key="portfolio_holdings_csv")

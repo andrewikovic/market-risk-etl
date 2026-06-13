@@ -12,7 +12,7 @@ if PROJECT_ROOT.name == "dashboards":
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from dashboards.common import load_selected_dashboard_data
+from dashboards.common import load_selected_dashboard_data, render_table_download
 
 
 st.set_page_config(page_title="Exposure Analytics", layout="wide")
@@ -50,3 +50,4 @@ st.plotly_chart(
     width="stretch",
 )
 st.dataframe(exposures, width="stretch", hide_index=True)
+render_table_download(exposures, "exposures", key="exposures_csv")

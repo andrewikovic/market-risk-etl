@@ -12,7 +12,7 @@ if PROJECT_ROOT.name == "dashboards":
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from dashboards.common import currency, load_selected_dashboard_data, percent, prepare_dates
+from dashboards.common import currency, load_selected_dashboard_data, percent, prepare_dates, render_risk_pack_downloads
 
 
 st.set_page_config(page_title="Market Risk Analytics Platform", page_icon=":chart_with_upwards_trend:", layout="wide")
@@ -58,3 +58,5 @@ metric_cols[0].metric("Sharpe Ratio", f"{risk_metrics['sharpe_ratio']:.2f}")
 metric_cols[1].metric("Sortino Ratio", f"{risk_metrics['sortino_ratio']:.2f}")
 metric_cols[2].metric("Expected Shortfall 95%", currency(risk_metrics["expected_shortfall_95"]))
 metric_cols[3].metric("Max Drawdown", percent(risk_metrics["max_drawdown"]))
+
+render_risk_pack_downloads(data, key_prefix="home_risk_pack")

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import numpy as np
+import pandas as pd
 import plotly.express as px
 import streamlit as st
 
@@ -13,7 +14,7 @@ if PROJECT_ROOT.name == "dashboards":
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from dashboards.common import currency, load_selected_dashboard_data
+from dashboards.common import currency, load_selected_dashboard_data, render_table_download
 from src.risk.expected_shortfall import calculate_expected_shortfall
 from src.risk.historical_var import calculate_historical_var
 from src.risk.monte_carlo import run_correlated_monte_carlo
@@ -49,6 +50,21 @@ cols[1].metric("Parametric VaR", currency(parametric_var))
 cols[2].metric("Monte Carlo VaR", currency(mc["monte_carlo_var"]))
 cols[3].metric("Historical ES", currency(historical_es))
 cols[4].metric("Monte Carlo ES", currency(mc["monte_carlo_expected_shortfall"]))
+
+var_es_table = pd.DataFrame(
+    [
+        {"metric": "Historical VaR", "confidence_level": confidence, "value": historical_var},
+        {"metric": "Parametric VaR", "confidence_level": confidence, "value": parametric_var},
+        {"metric": "Monte Carlo VaR", "confidence_level": confidence, "value": mc["monte_carlo_var"]},
+        {"metric": "Historical ES", "confidence_level": confidence, "value": historical_es},
+        {
+            "metric": "Monte Carlo ES",
+            "confidence_level": confidence,
+            "value": mc["monte_carlo_expected_shortfall"],
+        },
+    ]
+)
+render_table_download(var_es_table, "var_es_metrics", key="var_es_metrics_csv")
 
 loss_threshold = -historical_var / portfolio_value
 hist = portfolio_returns.to_frame(name="daily_return")

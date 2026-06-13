@@ -12,7 +12,7 @@ if PROJECT_ROOT.name == "dashboards":
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from dashboards.common import load_selected_dashboard_data, prepare_dates
+from dashboards.common import load_selected_dashboard_data, prepare_dates, render_table_download
 
 
 st.set_page_config(page_title="VaR Backtesting", layout="wide")
@@ -66,21 +66,22 @@ with right:
         width="stretch",
     )
 
+backtest_table = selected[
+    [
+        "date",
+        "confidence_level",
+        "var_estimate",
+        "realized_pnl",
+        "breach",
+        "breach_severity",
+        "exception_ratio",
+        "kupiec_statistic",
+        "p_value",
+        "pass_fail",
+    ]
+]
 st.dataframe(
-    selected[
-        [
-            "date",
-            "confidence_level",
-            "var_estimate",
-            "realized_pnl",
-            "breach",
-            "breach_severity",
-            "exception_ratio",
-            "kupiec_statistic",
-            "p_value",
-            "pass_fail",
-        ]
-    ],
+    backtest_table,
     width="stretch",
     hide_index=True,
     column_config={
@@ -93,3 +94,4 @@ st.dataframe(
         "p_value": st.column_config.NumberColumn(format="%.3f"),
     },
 )
+render_table_download(backtest_table, "var_backtesting", key="var_backtesting_csv")

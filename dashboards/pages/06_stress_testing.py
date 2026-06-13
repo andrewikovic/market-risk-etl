@@ -13,7 +13,13 @@ if PROJECT_ROOT.name == "dashboards":
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from dashboards.common import currency, load_dashboard_scenarios, load_selected_dashboard_data
+from dashboards.common import (
+    currency,
+    load_dashboard_scenarios,
+    load_selected_dashboard_data,
+    render_risk_pack_downloads,
+    render_table_download,
+)
 from src.risk.stress_testing import run_stress_test
 
 
@@ -58,10 +64,22 @@ with right:
         width="stretch",
     )
 
+stress_table = position_results[
+    [
+        "scenario_name",
+        "ticker",
+        "asset_class",
+        "sector",
+        "position_value",
+        "shock",
+        "shocked_position_value",
+        "stress_loss",
+    ]
+]
 st.dataframe(
-    position_results[
-        ["scenario_name", "ticker", "asset_class", "sector", "position_value", "shock", "shocked_position_value", "stress_loss"]
-    ],
+    stress_table,
     width="stretch",
     hide_index=True,
 )
+render_table_download(stress_table, "stress_test_positions", key="stress_test_positions_csv")
+render_risk_pack_downloads(data, stress_results=result, key_prefix="stress_risk_pack")
