@@ -3,27 +3,22 @@ from __future__ import annotations
 import pandas as pd
 from sqlalchemy import Date, DateTime, Engine
 
+from src.load.to_sql import write_frame_to_sql
+
 
 def load_staging_prices(engine: Engine, stg_prices_df: pd.DataFrame, if_exists: str = "append") -> None:
     """Load cleaned daily prices into staging.stg_daily_prices."""
-    stg_prices_df.to_sql(
-        "stg_daily_prices",
-        engine,
-        schema="staging",
-        if_exists=if_exists,
-        index=False,
-        method="multi",
-    )
+    write_frame_to_sql(stg_prices_df, "stg_daily_prices", engine, schema="staging", if_exists=if_exists)
 
 
 def load_daily_returns(engine: Engine, returns_df: pd.DataFrame, if_exists: str = "append") -> None:
     """Load daily returns into mart.daily_returns."""
-    returns_df.to_sql("daily_returns", engine, schema="mart", if_exists=if_exists, index=False, method="multi")
+    write_frame_to_sql(returns_df, "daily_returns", engine, schema="mart", if_exists=if_exists)
 
 
 def load_portfolio_values(engine: Engine, values_df: pd.DataFrame, if_exists: str = "append") -> None:
     """Load portfolio value history into mart.portfolio_values."""
-    values_df.to_sql("portfolio_values", engine, schema="mart", if_exists=if_exists, index=False, method="multi")
+    write_frame_to_sql(values_df, "portfolio_values", engine, schema="mart", if_exists=if_exists)
 
 
 def load_position_pnl(engine: Engine, pnl_df: pd.DataFrame, if_exists: str = "append") -> None:
@@ -41,14 +36,7 @@ def load_position_pnl(engine: Engine, pnl_df: pd.DataFrame, if_exists: str = "ap
         "fx_rate_to_base",
         "base_currency",
     ]
-    _select_columns(pnl_df, columns).to_sql(
-        "position_pnl",
-        engine,
-        schema="mart",
-        if_exists=if_exists,
-        index=False,
-        method="multi",
-    )
+    _load_required_frame(engine, pnl_df, "position_pnl", columns, if_exists)
 
 
 def load_exposures(engine: Engine, exposures_df: pd.DataFrame, if_exists: str = "append") -> None:
@@ -62,14 +50,7 @@ def load_exposures(engine: Engine, exposures_df: pd.DataFrame, if_exists: str = 
         "weight",
         "base_currency",
     ]
-    _select_columns(exposures_df, columns).to_sql(
-        "exposures",
-        engine,
-        schema="mart",
-        if_exists=if_exists,
-        index=False,
-        method="multi",
-    )
+    _load_required_frame(engine, exposures_df, "exposures", columns, if_exists)
 
 
 def load_risk_metrics(engine: Engine, risk_metrics_df: pd.DataFrame, if_exists: str = "append") -> None:
@@ -82,25 +63,17 @@ def load_risk_metrics(engine: Engine, risk_metrics_df: pd.DataFrame, if_exists: 
         "lookback_days",
         "confidence_level",
     ]
-    risk_metrics_df[columns].to_sql(
-        "risk_metrics",
-        engine,
-        schema="mart",
-        if_exists=if_exists,
-        index=False,
-        method="multi",
-    )
+    write_frame_to_sql(risk_metrics_df[columns], "risk_metrics", engine, schema="mart", if_exists=if_exists)
 
 
 def load_data_quality_results(engine: Engine, checks_df: pd.DataFrame, if_exists: str = "append") -> None:
     """Load data quality check results into mart.data_quality_results."""
-    checks_df.to_sql(
+    write_frame_to_sql(
+        checks_df,
         "data_quality_results",
         engine,
         schema="mart",
         if_exists=if_exists,
-        index=False,
-        method="multi",
         dtype={"check_date": Date(), "run_timestamp": DateTime(timezone=True)},
     )
 
@@ -126,14 +99,7 @@ def load_var_backtest(engine: Engine, var_backtest_df: pd.DataFrame, if_exists: 
         "p_value",
         "pass_fail",
     ]
-    data[columns].to_sql(
-        "var_backtest_exceptions",
-        engine,
-        schema="mart",
-        if_exists=if_exists,
-        index=False,
-        method="multi",
-    )
+    write_frame_to_sql(data[columns], "var_backtest_exceptions", engine, schema="mart", if_exists=if_exists)
 
 
 def load_var_contributions(engine: Engine, var_contributions_df: pd.DataFrame, if_exists: str = "append") -> None:
@@ -220,14 +186,7 @@ def load_efficient_frontier(engine: Engine, efficient_frontier_df: pd.DataFrame,
                     "weight": weight,
                 }
             )
-    pd.DataFrame(rows).to_sql(
-        "efficient_frontier",
-        engine,
-        schema="mart",
-        if_exists=if_exists,
-        index=False,
-        method="multi",
-    )
+    write_frame_to_sql(pd.DataFrame(rows), "efficient_frontier", engine, schema="mart", if_exists=if_exists)
 
 
 def load_optimized_portfolio(engine: Engine, optimized_portfolio_df: pd.DataFrame, if_exists: str = "append") -> None:
@@ -275,6 +234,16 @@ def _select_columns(data: pd.DataFrame, columns: list[str]) -> pd.DataFrame:
     return frame[columns]
 
 
+def _load_required_frame(
+    engine: Engine,
+    frame: pd.DataFrame,
+    table_name: str,
+    columns: list[str],
+    if_exists: str,
+) -> None:
+    write_frame_to_sql(_select_columns(frame, columns), table_name, engine, schema="mart", if_exists=if_exists)
+
+
 def _load_optional_frame(
     engine: Engine,
     frame: pd.DataFrame,
@@ -284,11 +253,4 @@ def _load_optional_frame(
 ) -> None:
     if frame.empty:
         return
-    _select_columns(frame, columns).to_sql(
-        table_name,
-        engine,
-        schema="mart",
-        if_exists=if_exists,
-        index=False,
-        method="multi",
-    )
+    _load_required_frame(engine, frame, table_name, columns, if_exists)

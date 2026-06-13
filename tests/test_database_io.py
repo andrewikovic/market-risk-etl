@@ -5,6 +5,7 @@ import pytest
 
 from src.load import db as db_module
 from src.load import load_marts, load_raw, pipeline_db, read_db
+from src.load.to_sql import MAX_INSERT_PARAMETERS, write_frame_to_sql
 
 
 def test_read_coerces_configured_numeric_columns(monkeypatch):
@@ -110,13 +111,24 @@ def test_read_pipeline_outputs_reconstructs_dashboard_shape(monkeypatch):
 def test_load_mart_frames_select_expected_columns(monkeypatch):
     calls = []
 
-    def fake_to_sql(self, name, engine, schema=None, if_exists=None, index=None, method=None, dtype=None):
+    def fake_to_sql(
+        self,
+        name,
+        engine,
+        schema=None,
+        if_exists=None,
+        index=None,
+        method=None,
+        chunksize=None,
+        dtype=None,
+    ):
         calls.append(
             {
                 "name": name,
                 "schema": schema,
                 "if_exists": if_exists,
                 "columns": list(self.columns),
+                "chunksize": chunksize,
                 "dtype": dtype,
             }
         )
@@ -250,7 +262,7 @@ def test_load_mart_frames_select_expected_columns(monkeypatch):
 def test_load_raw_frames_write_expected_tables(monkeypatch):
     calls = []
 
-    def fake_to_sql(self, name, engine, schema=None, if_exists=None, index=None, method=None):
+    def fake_to_sql(self, name, engine, schema=None, if_exists=None, index=None, method=None, chunksize=None, dtype=None):
         calls.append((name, schema, if_exists, list(self.columns)))
 
     monkeypatch.setattr(pd.DataFrame, "to_sql", fake_to_sql)
@@ -274,6 +286,22 @@ def test_load_raw_frames_write_expected_tables(monkeypatch):
     assert calls[0][:3] == ("prices", "raw", "replace")
     assert calls[1][:2] == ("assets", "raw")
     assert calls[2][0] == "portfolio_positions"
+
+
+def test_write_frame_to_sql_batches_below_parameter_limit(monkeypatch):
+    captured = {}
+
+    def fake_to_sql(self, name, engine, **kwargs):
+        captured.update(name=name, engine=engine, columns=len(self.columns), **kwargs)
+
+    monkeypatch.setattr(pd.DataFrame, "to_sql", fake_to_sql)
+    frame = pd.DataFrame({f"column_{index}": [index] for index in range(10)})
+
+    write_frame_to_sql(frame, "prices", "engine", schema="raw", if_exists="append")
+
+    assert captured["chunksize"] == MAX_INSERT_PARAMETERS // 10
+    assert captured["chunksize"] * captured["columns"] <= MAX_INSERT_PARAMETERS
+    assert captured["method"] == "multi"
 
 
 def test_database_helpers_use_env_and_execute_sql_files(tmp_path, monkeypatch):
