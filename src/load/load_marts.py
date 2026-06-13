@@ -27,6 +27,8 @@ def load_position_pnl(engine: Engine, pnl_df: pd.DataFrame, if_exists: str = "ap
         "portfolio_name",
         "value_date",
         "ticker",
+        "asset_class",
+        "sector",
         "position_value",
         "daily_pnl",
         "contribution_to_pnl",

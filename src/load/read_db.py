@@ -73,8 +73,9 @@ def read_pipeline_outputs(engine: Engine) -> dict[str, Any]:
     position_pnl = _read(
         engine,
         """
-        SELECT portfolio_name, value_date, ticker, position_value, daily_pnl,
-               contribution_to_pnl, contribution_to_return, weight,
+        SELECT portfolio_name, value_date, ticker, asset_class, sector,
+               position_value, daily_pnl, contribution_to_pnl,
+               contribution_to_return, weight,
                currency, fx_rate_to_base, base_currency
         FROM mart.position_pnl
         ORDER BY portfolio_name, value_date, ticker

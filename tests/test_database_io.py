@@ -63,6 +63,8 @@ def test_read_pipeline_outputs_reconstructs_dashboard_shape(monkeypatch):
                 "portfolio_name": ["P"],
                 "value_date": pd.to_datetime(["2024-01-02"]),
                 "ticker": ["A"],
+                "asset_class": ["Equity"],
+                "sector": ["Tech"],
                 "position_value": [22.0],
                 "weight": [1.0],
                 "currency": ["USD"],
@@ -102,6 +104,8 @@ def test_read_pipeline_outputs_reconstructs_dashboard_shape(monkeypatch):
     outputs = read_db.read_pipeline_outputs("engine")
 
     assert outputs["risk_metrics"] == {"historical_var_95": 1.23}
+    assert outputs["position_pnl"]["asset_class"].iloc[0] == "Equity"
+    assert outputs["position_pnl"]["sector"].iloc[0] == "Tech"
     assert outputs["current_positions"]["current_price"].iloc[0] == 11.0
     assert outputs["efficient_frontier"]["weights"].iloc[0] == {"A": 1.0}
     assert outputs["drawdowns"]["current_drawdown"] == 0.0
@@ -246,6 +250,8 @@ def test_load_mart_frames_select_expected_columns(monkeypatch):
         "portfolio_name",
         "value_date",
         "ticker",
+        "asset_class",
+        "sector",
         "position_value",
         "daily_pnl",
         "contribution_to_pnl",

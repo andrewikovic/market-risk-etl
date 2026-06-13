@@ -22,6 +22,8 @@ CREATE TABLE IF NOT EXISTS mart.position_pnl (
     portfolio_name TEXT NOT NULL,
     value_date DATE NOT NULL,
     ticker TEXT NOT NULL,
+    asset_class TEXT,
+    sector TEXT,
     position_value NUMERIC(18, 6) NOT NULL,
     daily_pnl NUMERIC(18, 6) NOT NULL,
     contribution_to_pnl NUMERIC(18, 6) NOT NULL,
@@ -34,6 +36,8 @@ CREATE TABLE IF NOT EXISTS mart.position_pnl (
 );
 
 ALTER TABLE mart.position_pnl
+    ADD COLUMN IF NOT EXISTS asset_class TEXT,
+    ADD COLUMN IF NOT EXISTS sector TEXT,
     ADD COLUMN IF NOT EXISTS currency TEXT,
     ADD COLUMN IF NOT EXISTS fx_rate_to_base NUMERIC(18, 10),
     ADD COLUMN IF NOT EXISTS base_currency TEXT;
