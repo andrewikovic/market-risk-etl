@@ -1,6 +1,22 @@
 from datetime import date
 
+import pandas as pd
+
 from dashboards import common
+
+
+def test_realized_portfolio_return_series_matches_pipeline_metric_input():
+    portfolio_values = pd.DataFrame(
+        {
+            "value_date": pd.to_datetime(["2024-01-03", "2024-01-01", "2024-01-02", "2024-01-04"]),
+            "daily_return": [0.02, 0.0, 0.01, float("inf")],
+        }
+    )
+
+    returns = common.realized_portfolio_return_series(portfolio_values)
+
+    assert returns.tolist() == [0.01, 0.02]
+    assert returns.index.tolist() == pd.to_datetime(["2024-01-02", "2024-01-03"]).tolist()
 
 
 def test_data_source_control_persists_selection_across_page_renders(monkeypatch):

@@ -192,6 +192,23 @@ def _set_persisted_value(key: str, value) -> None:
     st.session_state[key] = value
 
 
+def realized_portfolio_return_series(portfolio_values: pd.DataFrame) -> pd.Series:
+    """Return the realized portfolio returns used by persisted portfolio risk metrics."""
+    required = {"value_date", "daily_return"}
+    missing = required - set(portfolio_values.columns)
+    if missing:
+        raise ValueError(f"portfolio_values is missing columns: {sorted(missing)}")
+    if portfolio_values.empty:
+        return pd.Series(dtype=float, name="daily_return")
+
+    returns = portfolio_values[["value_date", "daily_return"]].copy()
+    returns["value_date"] = pd.to_datetime(returns["value_date"])
+    returns["daily_return"] = pd.to_numeric(returns["daily_return"], errors="coerce")
+    returns = returns.sort_values("value_date").iloc[1:]
+    series = returns.set_index("value_date")["daily_return"]
+    return series.replace([float("inf"), -float("inf")], float("nan")).dropna().rename("daily_return")
+
+
 @st.cache_data(show_spinner=False)
 def load_dashboard_data(
     mode: str | None = None,

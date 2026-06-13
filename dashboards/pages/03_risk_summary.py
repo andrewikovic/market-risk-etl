@@ -13,8 +13,13 @@ if PROJECT_ROOT.name == "dashboards":
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from dashboards.common import currency, load_selected_dashboard_data, percent, prepare_dates
-from src.risk.covariance import calculate_portfolio_return_series
+from dashboards.common import (
+    currency,
+    load_selected_dashboard_data,
+    percent,
+    prepare_dates,
+    realized_portfolio_return_series,
+)
 from src.transform.calculate_beta import calculate_beta
 from src.transform.calculate_drawdowns import calculate_drawdowns
 from src.transform.calculate_volatility import calculate_sharpe_ratio, calculate_sortino_ratio
@@ -24,8 +29,7 @@ st.set_page_config(page_title="Risk Summary", layout="wide")
 data = load_selected_dashboard_data()
 portfolio_values = prepare_dates(data["portfolio_values"], ("value_date",))
 returns = prepare_dates(data["returns"], ("return_date",))
-weights = data["current_positions"].set_index("ticker")["weight"].to_dict()
-portfolio_returns = calculate_portfolio_return_series(returns, weights)
+portfolio_returns = realized_portfolio_return_series(portfolio_values)
 benchmark_returns = returns[returns["ticker"] == "SPY"][["return_date", "daily_return"]]
 beta_metrics = calculate_beta(
     portfolio_returns.rename("daily_return").to_frame(),
